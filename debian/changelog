@@ -1,0 +1,17 @@
+r8169-dkms (7.0.0.41.41+2) trixie; urgency=medium
+
+  * Initial release.
+  * Driver base: drivers/net/ethernet/realtek from Ubuntu kernel tag
+    Ubuntu-7.0.0-41.41 (7bae00f0ec4a) with the Proxmox VE kernel's r8169
+    patches (pve-kernel 803fe655, Proxmox bug #8110): Ubuntu's linux-next
+    phylink series is reverted, as in 7.0.14-22-pve and later.
+  * Fixes and device support from mainline Linux:
+    - r8169: add support for RTL8125cp (a90e3029f20d)
+    - r8169: give RTL_GIGA_MAC_VER_EXTENDED a distinct value (d77f3f016826)
+    - r8169: keep LED device name valid after setup (3f33a2d2ea92)
+  * Fixes from the Linux stable trees:
+    - r8169: disable EEE on RTL8168h/8111h
+      (linux-7.2.y c5c096b13445, upstream 3cdeaef1754a)
+  * Only built for Proxmox 7.0 kernels from 7.0.14-22-pve on.
+
+ -- MajorP93 <majorp@mailbox.org>  Wed, 14 Oct 2026 21:15:52 +0200

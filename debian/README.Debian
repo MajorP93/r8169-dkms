@@ -1,0 +1,54 @@
+r8169-dkms for Debian
+=====================
+
+This package installs the r8169 driver sources to /usr/src/r8169-<version>
+and registers them with DKMS. DKMS builds the module for every installed
+Proxmox 7.0 kernel from 7.0.14-22-pve on (BUILD_EXCLUSIVE_KERNEL and
+BUILD_EXCLUSIVE_KERNEL_MIN in dkms.conf) and installs it to
+/lib/modules/<kernel>/updates/dkms/, which takes precedence over the
+in-tree module. The initramfs of each kernel that received the module is
+regenerated, because r8169 is usually loaded from the initramfs.
+
+Headers
+-------
+
+DKMS can only build for kernels whose headers are installed. Install
+proxmox-default-headers (or proxmox-headers-<version> for a specific
+kernel).
+
+Checking which driver is in use
+-------------------------------
+
+  dkms status r8169
+  modinfo -F filename r8169      # .../updates/dkms/r8169.ko*
+  modinfo -F version r8169       # r8169-dkms package version
+  modinfo -F upstream r8169      # kernel tag the sources come from
+  cat /sys/module/r8169/version  # version of the loaded module
+
+The in-tree r8169 has no version, so an empty /sys/module/r8169/version
+means the in-tree driver is loaded. Reboot (or reload r8169 from a local
+console) after installing the package.
+
+Secure Boot
+-----------
+
+DKMS signs the module with its machine owner key
+(/var/lib/dkms/mok.key, mok.pub). With Secure Boot enabled the key has to
+be enrolled once:
+
+  mokutil --import /var/lib/dkms/mok.pub
+
+and confirmed in the MOK manager on the next boot.
+
+Removing the package
+--------------------
+
+Removing the package deletes the DKMS module and regenerates the initramfs
+of the affected kernels, so they boot with the in-tree r8169 again.
+
+Conflicting packages
+--------------------
+
+Realtek's vendor drivers (r8168-dkms, realtek-r8125-dkms, ...) typically
+blacklist r8169. Remove them, and any "blacklist r8169" line in
+/etc/modprobe.d/, before using this package.

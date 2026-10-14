@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+
+include /usr/share/dpkg/pkg-info.mk
+
+# The DKMS module version is the package version, e.g. r8169/7.0.0.41.41+1.
+DKMS_VERSION := $(DEB_VERSION_UPSTREAM_REVISION)
+
+%:
+	dh $@ --with dkms
+
+# Nothing is compiled at package build time; DKMS builds on the target.
+override_dh_auto_configure:
+override_dh_auto_build:
+override_dh_auto_test:
+override_dh_auto_clean:
+
+override_dh_auto_install:
+	$(MAKE) install-src DESTDIR=$(CURDIR)/debian/r8169-dkms VERSION=$(DKMS_VERSION)
+
+override_dh_dkms:
+	dh_dkms -V $(DKMS_VERSION) -- dkms.conf

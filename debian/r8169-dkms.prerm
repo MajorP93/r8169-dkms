@@ -1,0 +1,37 @@
+#!/bin/sh
+set -e
+
+# When the package is removed, the DKMS module is deleted by the dh_dkms
+# snippet below. Regenerate the initramfs of the affected kernels afterwards
+# so that they boot with the in-tree r8169 again. On upgrades the new
+# version's postinst takes care of this.
+
+r8169_dkms_kernels() {
+	for mod in /lib/modules/*/updates/dkms/r8169.ko*; do
+		[ -e "$mod" ] || continue
+		kver=${mod#/lib/modules/}
+		echo "${kver%%/*}"
+	done
+}
+
+refresh_initramfs() {
+	command -v update-initramfs >/dev/null 2>&1 || return 0
+	for kver in "$@"; do
+		[ -e "/boot/initrd.img-$kver" ] || continue
+		update-initramfs -u -k "$kver" ||
+			echo "r8169-dkms: failed to update the initramfs for $kver" >&2
+	done
+}
+
+kernels=
+if [ "$1" = remove ]; then
+	kernels=$(r8169_dkms_kernels)
+fi
+
+#DEBHELPER#
+
+if [ "$1" = remove ]; then
+	refresh_initramfs $kernels
+fi
+
+exit 0

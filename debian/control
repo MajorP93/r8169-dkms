@@ -1,0 +1,25 @@
+Source: r8169-dkms
+Section: kernel
+Priority: optional
+Maintainer: MajorP93 <majorp@mailbox.org>
+Build-Depends: debhelper-compat (= 13),
+               dh-dkms | dkms (<< 3.0.3-3~),
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+
+Package: r8169-dkms
+Architecture: all
+Depends: ${misc:Depends},
+Recommends: proxmox-default-headers,
+            pve-firmware | firmware-realtek,
+Description: Realtek r8169 Ethernet driver with newer fixes for Proxmox kernels (DKMS)
+ This package provides the source code of the Linux kernel's r8169 driver
+ for Realtek RTL8169/8168/8101/8125/8126/8127 Ethernet controllers as
+ shipped with the Proxmox VE / Proxmox Backup Server 7.0 kernel, extended
+ with newer fixes and device support from mainline Linux and the Linux
+ stable trees. DKMS builds it for each installed Proxmox 7.0 kernel
+ (7.0.14-22-pve or later) and installs it so that it takes precedence over
+ the r8169 module shipped with the kernel.
+ .
+ Kernel headers for every kernel the module should be built for must be
+ installed (proxmox-default-headers or proxmox-headers-<version>).
