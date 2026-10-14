@@ -1,0 +1,82 @@
+name: Build
+
+"on":
+  push:
+    branches:
+      - main
+    tags:
+      - "debian/*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build package and DKMS module
+    runs-on: ubuntu-24.04
+    # Proxmox VE 9 / Proxmox Backup Server 4 are based on Debian trixie; the
+    # module is built against the current Proxmox 7.0 kernel headers.
+    container: debian:trixie
+
+    steps:
+      - name: Add Proxmox repository
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
+            ca-certificates curl
+          curl -fsSL -o /usr/share/keyrings/proxmox-archive-keyring.gpg \
+            https://enterprise.proxmox.com/debian/proxmox-archive-keyring-trixie.gpg
+          cat > /etc/apt/sources.list.d/proxmox.sources <<'EOF'
+          Types: deb
+          URIs: http://download.proxmox.com/debian/pve
+          Suites: trixie
+          Components: pve-no-subscription
+          Signed-By: /usr/share/keyrings/proxmox-archive-keyring.gpg
+          EOF
+
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
+            build-essential debhelper dh-dkms dkms git kmod proxmox-default-headers
+
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Build Debian package
+        run: |
+          dpkg-buildpackage -b -us -uc
+          mkdir dist
+          mv ../r8169-dkms_* dist/
+
+      - name: Install package and build module
+        run: |
+          set -eu
+          version=$(dpkg-parsechangelog -S Version)
+          DEBIAN_FRONTEND=noninteractive apt-get install --yes ./dist/r8169-dkms_"$version"_all.deb
+          built=0
+          for kver in $(ls /lib/modules); do
+            [ -d "/lib/modules/$kver/build" ] || continue
+            dkms build --force r8169/"$version" -k "$kver" ||
+              { cat /var/lib/dkms/r8169/"$version"/build/make.log; exit 1; }
+            modinfo /var/lib/dkms/r8169/"$version"/"$kver"/*/module/r8169.ko*
+            built=$((built + 1))
+          done
+          [ "$built" -gt 0 ] || { echo "::error::No kernel headers found to build against"; exit 1; }
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: r8169-dkms
+          path: dist/
+
+      - name: Create draft release
+        if: startsWith(github.ref, 'refs/tags/debian/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          apt-get install --yes --no-install-recommends gh
+          gh release create "$GITHUB_REF_NAME" dist/* --draft --generate-notes
